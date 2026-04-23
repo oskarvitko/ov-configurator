@@ -1,0 +1,40 @@
+{
+  "name": "ov-configurator",
+  "version": "1.0.0",
+  "description": "Universal frontend product configurator module",
+  "type": "module",
+  "main": "./dist/ov-configurator.cjs",
+  "module": "./dist/ov-configurator.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/ov-configurator.js",
+      "require": "./dist/ov-configurator.cjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./iife": "./dist/ov-configurator.iife.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "start:dev": "vite --config vite.dev.config.ts",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.0",
+    "@babel/preset-env": "^7.29.2",
+    "@rollup/plugin-babel": "^7.0.0",
+    "@tailwindcss/vite": "^4.2.2",
+    "@types/node": "^25.6.0",
+    "tailwindcss": "^4.2.2",
+    "typescript": "~6.0.2",
+    "vite": "^8.0.4",
+    "vite-plugin-dts": "^4.5.4"
+  },
+  "dependencies": {
+    "jsonpath-plus": "^10.4.0"
+  }
+}

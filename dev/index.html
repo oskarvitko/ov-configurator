@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ov-configurator — dev</title>
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+    <div class="mx-auto p-8 max-w-3xl">
+
+        <h1 class="mb-6 font-bold text-gray-900 text-2xl">
+            ov-configurator
+            <span class="ml-1 font-normal text-gray-400 text-base">dev</span>
+        </h1>
+
+        <!-- Tab nav -->
+        <div class="flex gap-1 mb-8 border-gray-200 border-b">
+            <button data-tab-btn="calculator" class="tab-btn tab-btn--active">
+                Calculator
+            </button>
+            <button data-tab-btn="configurator" class="tab-btn">
+                Configurator
+            </button>
+        </div>
+
+        <!-- ── Tab 1: Raw Calculator ───────────────────────── -->
+        <div data-tab="calculator">
+            <p class="mb-5 text-gray-500 text-sm">
+                Direct usage of <code class="bg-gray-100 px-1 rounded">Calculator</code> —
+                sections and fields are configured manually in JS.
+            </p>
+
+            <div id="calc-parent" class="calc-card">
+                <div class="results">
+                    <div class="result-row">
+                        <span class="result-label">Price:</span>
+                        <strong class="text-indigo-600 result-value" data-calc="price">—</strong>
+                        <span class="result-unit">$</span>
+                    </div>
+                    <div class="result-row">
+                        <span class="result-label">Without discount:</span>
+                        <del class="text-gray-400 result-value" data-calc="old-price">—</del>
+                        <span class="result-unit">$</span>
+                    </div>
+                </div>
+
+                <!-- Calculator renders the form here -->
+                <div id="calc-form"></div>
+            </div>
+        </div>
+
+        <!-- ── Tab 2: Data-driven Configurator ────────────── -->
+        <div data-tab="configurator" class="hidden">
+            <p class="mb-5 text-gray-500 text-sm">
+                Usage of <code class="bg-gray-100 px-1 rounded">initConfigurator</code> —
+                config is read from an inline script, data is passed from outside.
+            </p>
+
+            <div data-calc-id="product-1">
+                <div class="calc-card">
+                    <div class="results">
+                        <div class="result-row">
+                            <span class="result-label">Price:</span>
+                            <strong class="text-indigo-600 result-value" data-calc="price">—</strong>
+                            <span class="result-unit">$</span>
+                        </div>
+                        <div class="result-row">
+                            <span class="result-label">Without discount:</span>
+                            <del class="text-gray-400 result-value" data-calc="old-price">—</del>
+                            <span class="result-unit">$</span>
+                        </div>
+                        <div class="result-row">
+                            <span class="result-label">Configuration:</span>
+                            <span class="font-medium text-gray-700 result-value" data-calc="params">—</span>
+                        </div>
+                    </div>
+
+                    <!-- Calculator renders the form here -->
+                    <div data-calc-place="product-1"></div>
+                </div>
+
+                <!--
+                    Inline configurator config.
+                    Syntax is a JS object (not JSON), functions are allowed.
+                -->
+                <script type="text/plain" data-configurator-options>
+                {
+                    oldPricePercent: 20,
+                    getPrice: function(values, item) {
+                        var size     = values.size     || '3x4'
+                        var covering = values.covering || 'polycarbonate'
+                        var base         = item.basePrice || 0
+                        var sizeExtra    = (item.sizePrices     && item.sizePrices[size])         || 0
+                        var coverExtra   = (item.coveringPrices && item.coveringPrices[covering]) || 0
+                        return base + sizeExtra + coverExtra
+                    },
+                    sections: [
+                        {
+                            key:    'size',
+                            title:  'Size',
+                            path:   '$.sizes[*]',
+                            postfix: ' m'
+                        },
+                        {
+                            key:   'covering',
+                            title: 'Covering',
+                            path:  '$.coverings[*]',
+                            labelMapping: {
+                                polycarbonate: 'Polycarbonate',
+                                glass:         'Glass'
+                            }
+                        }
+                    ]
+                }
+                </script>
+            </div>
+        </div>
+
+    </div>
+    <script type="module" src="./main.ts"></script>
+</body>
+
+</html>
