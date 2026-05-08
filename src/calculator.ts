@@ -97,19 +97,17 @@ class Field<TData = unknown> {
                 parentNode.querySelectorAll<HTMLElement>(this.options.selector),
             )
         } else {
+            const attributeName = `data-${prefix}`
             this.nodes = Array.from(
                 parentNode.querySelectorAll<HTMLElement>(
-                    `[data-${prefix}="${this.options.selector}"]`,
+                    `[${attributeName}="${this.options.selector}"]`,
                 ),
             )
 
             if (
-                !this.nodes.length &&
-                this.options.attribute &&
-                parentNode.getAttribute(`data-${prefix}`) ===
-                    this.options.selector
+                parentNode.getAttribute(attributeName) === this.options.selector
             ) {
-                this.nodes = [parentNode]
+                this.nodes.push(parentNode)
             }
         }
 

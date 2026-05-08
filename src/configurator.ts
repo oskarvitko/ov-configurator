@@ -177,12 +177,11 @@ export function initConfigurator(
     const paramsField = {
         calculateFunction(values: Record<string, string>) {
             return sections
-                .map((section: ConfiguratorSection) => {
-                    values[section.key] +
-                        getPostfix(section, values[section.key])
-
-                    return
-                })
+                .map(
+                    (section: ConfiguratorSection) =>
+                        values[section.key] +
+                        getPostfix(section, values[section.key]),
+                )
                 .join(' ')
         },
     }
