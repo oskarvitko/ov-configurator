@@ -1,9 +1,11 @@
-import type {
-    CalculatorOptions,
-    FieldOptions,
-    SectionOptions,
-    SectionInput,
-} from './types'
+import type { CalculatorOptions, FieldOptions, SectionOptions } from './types'
+import {
+    renderCalculatorForm,
+    unmountCalculatorForm,
+    resolveSections,
+    type ResolvedSection,
+    resolveInputs,
+} from './calculator-form'
 
 // Polyfills for IE11
 ;(function () {
@@ -66,8 +68,8 @@ interface GetNodeOptions {
 class Field<TData = unknown> {
     selector: string
     options: Required<FieldOptions<TData>>
-    node: HTMLElement | null = null
-    animationId: number = 0
+    nodes: HTMLElement[] = []
+    animationIds: number[] = []
     prevValue: unknown = undefined
 
     constructor(options: FieldOptions<TData>) {
@@ -87,48 +89,73 @@ class Field<TData = unknown> {
         } as Required<FieldOptions<TData>>
     }
 
-    getNode(options: GetNodeOptions): HTMLElement | null {
+    getNode(options: GetNodeOptions): HTMLElement[] {
         const { prefix, parentNode, type = fieldTypes.DEFAULT } = options
 
         if (type === fieldTypes.CUSTOM) {
-            this.node = parentNode.querySelector<HTMLElement>(
-                this.options.selector,
+            this.nodes = Array.from(
+                parentNode.querySelectorAll<HTMLElement>(this.options.selector),
             )
         } else {
-            this.node = parentNode.querySelector<HTMLElement>(
-                `[data-${prefix}="${this.options.selector}"]`,
+            this.nodes = Array.from(
+                parentNode.querySelectorAll<HTMLElement>(
+                    `[data-${prefix}="${this.options.selector}"]`,
+                ),
             )
 
             if (
-                !this.node &&
+                !this.nodes.length &&
                 this.options.attribute &&
                 parentNode.getAttribute(`data-${prefix}`) ===
                     this.options.selector
             ) {
-                this.node = parentNode
+                this.nodes = [parentNode]
             }
         }
 
-        return this.node
+        return this.nodes
     }
 
     changeValue(value: unknown): void {
-        if (!this.node) return
+        if (!this.nodes.length) return
+
+        const { prefix, selector } = this.options
 
         this.animateBlock(value)
 
-        if (this.options.attribute) {
-            const attributeName = this.node.dataset.calcAttribute
-            if (attributeName) {
-                this.node.setAttribute(attributeName, String(value))
+        this.nodes.forEach((node, index) => {
+            let attributeName = node.dataset.calcAttribute
+            let shouldChangeAttribute = this.options.attribute
+            let shouldChangeTextContent = !this.options.attribute
+
+            const changeConfig = node.getAttribute(
+                `data-${prefix}-${selector}-target`,
+            )
+
+            if (changeConfig) {
+                const [mode, attribute] = changeConfig.split(':')
+
+                attributeName = attribute
+                shouldChangeAttribute = mode === 'full' || mode === 'attr'
+                shouldChangeTextContent = mode === 'full'
             }
-        } else {
-            if (Number.isNaN(Number(value))) {
-                this.node.innerHTML = String(value)
-                return
+
+            if (shouldChangeAttribute) {
+                if (attributeName) {
+                    node.setAttribute(attributeName, String(value))
+                }
             }
-            this.animateNumber(Number(value))
-        }
+
+            if (shouldChangeTextContent) {
+                const numberedValue = Number(value)
+                if (Number.isNaN(numberedValue)) {
+                    node.innerHTML = String(value)
+                    return
+                }
+
+                this.animateNumber(numberedValue, node, index)
+            }
+        })
 
         this.prevValue = value
     }
@@ -139,41 +166,45 @@ class Field<TData = unknown> {
         const { animated, animation, animatedNode, animatedNodeSelector } =
             this.options
 
-        let node: HTMLElement | null = null
+        if (!animated) return
 
-        switch (animatedNode) {
-            case animatedNodeTypes.SELF:
-                node = this.node
-                break
-            case animatedNodeTypes.PARENT:
-                node = this.node?.parentNode as HTMLElement | null
-                break
-            case animatedNodeTypes.CLOSEST:
-                node =
-                    this.node?.closest<HTMLElement>(animatedNodeSelector) ??
-                    null
-                break
-        }
+        this.nodes.forEach((currentNode) => {
+            let node: HTMLElement | null = null
 
-        if (animated && node) {
-            const animateClass = ['animate__animated', ...animation]
-            const removeClasses = (): void => {
-                node!.classList.remove(...animateClass)
+            switch (animatedNode) {
+                case animatedNodeTypes.SELF:
+                    node = currentNode
+                    break
+                case animatedNodeTypes.PARENT:
+                    node = currentNode.parentNode as HTMLElement | null
+                    break
+                case animatedNodeTypes.CLOSEST:
+                    node =
+                        currentNode.closest<HTMLElement>(
+                            animatedNodeSelector,
+                        ) ?? null
+                    break
             }
 
-            node.classList.add(...animateClass)
-            node.addEventListener('webkitAnimationEnd', removeClasses)
-            node.addEventListener('mozAnimationEnd', removeClasses)
-            node.addEventListener('MSAnimationEnd', removeClasses)
-            node.addEventListener('oanimationend', removeClasses)
-            node.addEventListener('animationend', removeClasses)
-        }
+            if (node) {
+                const animateClass = ['animate__animated', ...animation]
+                const removeClasses = (): void => {
+                    node!.classList.remove(...animateClass)
+                }
+
+                node.classList.add(...animateClass)
+                node.addEventListener('webkitAnimationEnd', removeClasses)
+                node.addEventListener('mozAnimationEnd', removeClasses)
+                node.addEventListener('MSAnimationEnd', removeClasses)
+                node.addEventListener('oanimationend', removeClasses)
+                node.addEventListener('animationend', removeClasses)
+            }
+        })
     }
 
-    animateNumber(to: number): void {
+    animateNumber(to: number, node: HTMLElement, index: number): void {
         const { duration = 800, dots = 0 } = this.options
-        const node = this.node!
-        window.cancelAnimationFrame(this.animationId)
+        window.cancelAnimationFrame(this.animationIds[index] ?? 0)
 
         let from = Number(node.textContent)
         from = Number.isNaN(from) ? 0 : from
@@ -190,10 +221,10 @@ class Field<TData = unknown> {
             node.textContent = value.toFixed(dots)
 
             if (progress < duration) {
-                this.animationId = window.requestAnimationFrame(step)
+                this.animationIds[index] = window.requestAnimationFrame(step)
             } else {
                 node.textContent = to.toFixed(getCompletedDots(to))
-                window.cancelAnimationFrame(this.animationId)
+                window.cancelAnimationFrame(this.animationIds[index])
             }
         }
 
@@ -215,7 +246,7 @@ class Field<TData = unknown> {
             return 0
         }
 
-        this.animationId = window.requestAnimationFrame(step)
+        this.animationIds[index] = window.requestAnimationFrame(step)
     }
 }
 
@@ -233,7 +264,6 @@ export default class Calculator<TData = unknown> {
     }
     data: TData | null
     fields: Field<TData>[]
-    private form!: HTMLFormElement
 
     constructor(options: CalculatorOptions<TData>) {
         const { editableFields = [], data = null } = options
@@ -246,11 +276,22 @@ export default class Calculator<TData = unknown> {
             ...options,
         }
         this.data = data as TData | null
-        this.fields = editableFields.map((field) => new Field<TData>(field))
+        this.fields = editableFields.map(
+            (field) =>
+                new Field<TData>({
+                    ...field,
+                    prefix: this.options.dataAttributePrefix,
+                }),
+        )
     }
 
     addField(field: FieldOptions<TData>): void {
-        this.fields.push(new Field<TData>(field))
+        this.fields.push(
+            new Field<TData>({
+                ...field,
+                prefix: this.options.dataAttributePrefix,
+            }),
+        )
     }
 
     addSection(section: SectionOptions): void {
@@ -260,47 +301,45 @@ export default class Calculator<TData = unknown> {
         this.options.sectionsOptions = newSections
     }
 
-    init(): void {
-        if (!this.data) return
+    private sortSections(sections: SectionOptions[]): SectionOptions[] {
+        const result: SectionOptions[] = []
+        const visited = new Set<string>()
 
-        const { parentSelector, dataAttributePrefix, stylePrefix } =
-            this.options
+        const visit = (type: string): void => {
+            if (visited.has(type)) return
+            visited.add(type)
+            const section = sections.find((s) => s.type === type)
+            if (!section) return
+            for (const dep of section.dependsOn ?? []) {
+                visit(dep)
+            }
+            result.push(section)
+        }
 
-        const parent = document.querySelector<HTMLElement>(parentSelector!)!
-        this.fields.forEach((field) =>
-            field.getNode({
-                prefix: dataAttributePrefix,
-                parentNode: parent,
-            }),
-        )
-        this.form = parent.querySelector<HTMLFormElement>(`.${stylePrefix}`)!
-        this.form.addEventListener('change', () =>
-            this.changeHandler(this.form),
-        )
+        for (const section of sections) {
+            visit(section.type)
+        }
 
-        this.changeHandler(this.form)
+        return result
     }
 
-    getValues(): Record<string, string> {
-        return this.values
+    private buildInitialSections(): {
+        resolvedSections: ResolvedSection[]
+        values: Record<string, string>
+    } {
+        const sections = this.options.sectionsOptions ?? []
+        const values: Record<string, string> = {}
+
+        for (const section of sections) {
+            const inputs = resolveInputs(section, values)
+            const firstEnabled = inputs.find((i) => !i.disabled)
+            if (firstEnabled) values[section.type] = firstEnabled.value
+        }
+
+        return { resolvedSections: resolveSections(sections, values), values }
     }
 
-    changeHandler(form: HTMLFormElement): void {
-        const checked = Array.from(
-            form.querySelectorAll<HTMLInputElement>('input'),
-        ).filter((input) => input.checked)
-
-        const values = checked.reduce<Record<string, string>>(
-            (result, input) => {
-                const arr = input.name.split('-')
-                return {
-                    ...result,
-                    [arr[arr.length - 1]]: input.value,
-                }
-            },
-            {},
-        )
-
+    private processFields(values: Record<string, string>): void {
         this.fields.forEach((field) => {
             try {
                 const value = field.options.calculateFunction(
@@ -318,6 +357,60 @@ export default class Calculator<TData = unknown> {
         this.values = values
     }
 
+    render(node: HTMLElement): void {
+        this.node = node
+        if (!this.data) return
+
+        if (this.options.sectionsOptions) {
+            this.options.sectionsOptions = this.sortSections(
+                this.options.sectionsOptions,
+            )
+        }
+
+        const { resolvedSections, values } = this.buildInitialSections()
+
+        this.values = values
+
+        const {
+            parentSelector,
+            stylePrefix,
+            prefix,
+            dataAttributePrefix,
+            id,
+            sectionsOptions = [],
+        } = this.options
+
+        renderCalculatorForm(node, {
+            sections: sectionsOptions,
+            initialSections: resolvedSections,
+            initialValues: values,
+            dataAttributePrefix,
+            stylePrefix,
+            prefix,
+            id,
+            onValuesChange: (newValues) => this.processFields(newValues),
+        })
+
+        const parent = parentSelector
+            ? document.querySelector<HTMLElement>(parentSelector)
+            : null
+
+        if (parent) {
+            this.fields.forEach((field) =>
+                field.getNode({
+                    prefix: dataAttributePrefix,
+                    parentNode: parent,
+                }),
+            )
+        }
+
+        this.processFields(values)
+    }
+
+    getValues(): Record<string, string> {
+        return this.values
+    }
+
     saveValue(key: string, value: unknown): void {
         this.savedValues[key] = value
     }
@@ -326,82 +419,11 @@ export default class Calculator<TData = unknown> {
         return this.savedValues[key]
     }
 
-    getHTML(): string {
-        if (!this.data) return ''
-        const { stylePrefix, sectionsOptions } = this.options
-
-        return `
-            <form action="/" class="${stylePrefix}">
-                ${(sectionsOptions ?? [])
-                    .map((options) => this.getSectionHTML(options))
-                    .join('')}
-            </form>
-        `
-    }
-
-    getSectionHTML(options: SectionOptions): string {
-        const { stylePrefix, prefix, id } = this.options
-        let {
-            title = '',
-            type,
-            inputs,
-            className = '',
-            checked = true,
-            inputType = 'radio',
-        } = options
-
-        if (typeof inputs === 'function') inputs = inputs(this.data)
-        if (!inputs.length) return ''
-
-        const defaultValue = inputs[0].value
-        let checkedValue = this.getValues()[type] ?? defaultValue
-        if (!inputs.find((input) => input.value === checkedValue)) {
-            checkedValue = defaultValue
-        }
-
-        return `
-        <div class="${stylePrefix}__section">
-            ${
-                title &&
-                `<h4 class="${stylePrefix}__section-title">${title}:</h4>`
-            }
-            <div class="${stylePrefix}__section-row">
-            ${inputs
-                .map((input: SectionInput, i: number) => {
-                    const checkedAttribute =
-                        checkedValue === input.value ? 'checked' : ''
-
-                    return `
-                <div class="${stylePrefix}__section-col ${className}">
-                        <input
-                        ${checked ? checkedAttribute : ''}
-                            name="${prefix}-${id}-${type}"
-                            id="${prefix}-${id}-${type}-${i}"
-                            type="${inputType}"
-                            value="${input.value}"
-                        />
-                        <label
-                            for="${prefix}-${id}-${type}-${i}"
-                            >${input.label}</label
-                        >
-                    </div>
-                        `
-                })
-                .join('')}
-            </div>
-        </div>
-        `
-    }
-
-    renderInNode(node: HTMLElement): void {
-        node.innerHTML = this.getHTML()
-        this.node = node
-    }
-
     refresh(): void {
         if (this.node) {
-            this.renderInNode(this.node)
-            this.init()
+            unmountCalculatorForm(this.node)
+            this.values = {}
+            this.render(this.node)
         }
     }
 }

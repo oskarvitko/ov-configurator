@@ -90,3 +90,7 @@
     @apply bg-indigo-600 text-white border-indigo-600;
 }
 
+.calculator__section-col input:disabled + label {
+    @apply opacity-50;
+}
+

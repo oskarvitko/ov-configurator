@@ -4,12 +4,23 @@ import type {
     ConfiguratorOptions,
     ConfiguratorSection,
     DataSource,
+    InitConfiguratorOptions,
+    SectionInput,
 } from './types'
 
 function getConfiguratorOptions(
-    node: HTMLElement | null,
+    element: HTMLElement,
 ): ConfiguratorOptions | null {
+    let node = element.querySelector<HTMLElement>('[data-configurator-options]')
+
+    const nodeSelector = node?.getAttribute('data-configurator-options')
+
+    if (nodeSelector) {
+        node = document.querySelector(nodeSelector)
+    }
+
     if (!node) return null
+
     try {
         let code = node.textContent?.trim() ?? ''
         if (!code.startsWith('{')) code = '{' + code + '}'
@@ -23,19 +34,27 @@ function getConfiguratorOptions(
 export function getOptions(
     dataSource: DataSource,
     element: HTMLElement,
+    {
+        calcIdAttribute = 'data-calc-id',
+        calcPlaceSelector,
+    }: InitConfiguratorOptions,
 ): {
     data: unknown
     uniqId: string
     id: string
     placeNode: HTMLElement
 } | null {
-    const id = element.getAttribute('data-calc-id')
+    const id = element.getAttribute(calcIdAttribute)
     if (!id) return null
 
-    const placeNode = element.querySelector<HTMLElement>(
-        `[data-calc-place="${id}"]`,
-    )
-    if (!placeNode) return null
+    const placeSelector =
+        typeof calcPlaceSelector === 'function'
+            ? calcPlaceSelector(id)
+            : calcPlaceSelector
+
+    const placeNode =
+        element.querySelector<HTMLElement>(placeSelector) ?? element
+
     if (typeof dataSource === 'undefined') return null
     if (!dataSource[id]) return null
 
@@ -109,16 +128,15 @@ export function queryByPath(
 export function initConfigurator(
     dataSource: DataSource,
     element: HTMLElement,
+    initOptions: InitConfiguratorOptions,
 ): void {
-    const options = getOptions(dataSource, element)
+    const options = getOptions(dataSource, element, initOptions)
 
     if (!options) return
 
     const { id, uniqId, data, placeNode } = options
 
-    const configuratorOptions = getConfiguratorOptions(
-        element.querySelector<HTMLElement>('[data-configurator-options]'),
-    )
+    const configuratorOptions = getConfiguratorOptions(element)
     if (!configuratorOptions) return
 
     const { oldPricePercent, getPrice, sections, fields } = configuratorOptions
@@ -136,16 +154,7 @@ export function initConfigurator(
     calculator.addField({
         selector: 'price',
         calculateFunction: (values, item) => {
-            const value = getPrice(values, item, id)
-
-            const prevValues = calculator.getValues()
-            if (Object.keys(prevValues).length !== Object.keys(values).length) {
-                setTimeout(() => {
-                    calculator.refresh()
-                })
-            }
-
-            return value
+            return getPrice(values, item, id)
         },
     })
 
@@ -157,13 +166,23 @@ export function initConfigurator(
         },
     })
 
+    function getPostfix(section: ConfiguratorSection, label: string) {
+        if (section.postfix === undefined) return ''
+
+        return typeof section.postfix === 'function'
+            ? section.postfix(label)
+            : section.postfix
+    }
+
     const paramsField = {
         calculateFunction(values: Record<string, string>) {
             return sections
-                .map(
-                    (section: ConfiguratorSection) =>
-                        values[section.key] + (section.postfix ?? ''),
-                )
+                .map((section: ConfiguratorSection) => {
+                    values[section.key] +
+                        getPostfix(section, values[section.key])
+
+                    return
+                })
                 .join(' ')
         },
     }
@@ -180,7 +199,7 @@ export function initConfigurator(
             return sections
                 .map(
                     (section: ConfiguratorSection) =>
-                        `${section.title}: ${values[section.key]}${section.postfix ?? ''}`,
+                        `${section.title}: ${values[section.key]}${getPostfix(section, values[section.key])}`,
                 )
                 .join('\n')
         },
@@ -215,28 +234,39 @@ export function initConfigurator(
             },
         })
 
-        function getLabel(value: string): string {
+        function getLabel(value: string, section: ConfiguratorSection): string {
             const labelMapping = section.labelMapping ?? {}
-            return labelMapping[value] ?? value + (section.postfix ?? '')
+            const label = labelMapping[value] ?? value
+            return label + getPostfix(section, label)
         }
 
         calculator.addSection({
             title: section.title,
             type: section.key,
+            dependsOn: section.dependsOn,
             inputs: Array.isArray(section.inputs)
                 ? section.inputs
-                : () => {
-                      const currentValues = calculator.getValues()
+                : (values) => {
                       const sectionData = queryByPath(
                           data,
                           section.path,
-                          currentValues,
+                          values,
                       )
+
                       if (!sectionData) return []
-                      return (sectionData as string[]).map((value) => ({
-                          label: getLabel(value),
-                          value,
-                      }))
+
+                      return (sectionData as string[]).map((value) => {
+                          const input: SectionInput = {
+                              label: getLabel(value, section),
+                              value,
+                          }
+
+                          if (typeof section.isDisabled === 'function') {
+                              input.disabled = section.isDisabled(input)
+                          }
+
+                          return input
+                      })
                   },
         })
     })
@@ -261,8 +291,7 @@ export function initConfigurator(
         })
     })
 
-    calculator.renderInNode(placeNode)
-    calculator.init()
+    calculator.render(placeNode)
 }
 
 /** Alias for {@link initConfigurator} */

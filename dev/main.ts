@@ -52,8 +52,9 @@ const calculator = new Calculator<GreenhouseData>({
             title: 'Size',
             type: 'size',
             inputs: calcData.sizes.map((s) => ({
-                label: s.label,
+                label: '<b>LOL</b>',
                 value: s.value,
+                disabled: s.value === '3x6',
             })),
         },
         {
@@ -77,7 +78,7 @@ calculator.addField({
         const base = sizeRec?.basePrice ?? 0
         const multiplier =
             data.materialMultipliers[values.material ?? 'polycarbonate'] ?? 1
-        return Math.round(base * multiplier).toLocaleString('en-US')
+        return Math.round(base * multiplier)
     },
 })
 
@@ -86,13 +87,12 @@ calculator.addField({
     calculateFunction() {
         const raw = String(calculator.getValue('price')).replace(/[^0-9.]/g, '')
         const price = Number(raw)
-        return Math.round(price / 0.8).toLocaleString('en-US')
+        return Math.round(price / 0.8)
     },
 })
 
 const formPlace = document.getElementById('calc-form')!
-calculator.renderInNode(formPlace)
-calculator.init()
+calculator.render(formPlace)
 
 // ── Demo 2: Configurator (data-driven) ────────────────────────────────────────
 //
@@ -107,10 +107,28 @@ const configuratorData = {
         coverings: ['polycarbonate', 'glass'],
         sizePrices: { '3x4': 0, '3x6': 15_000, '4x8': 38_000 },
         coveringPrices: { polycarbonate: 0, glass: 12_000 },
+        nested: {
+            '3x4': {
+                polycarbonate: {
+                    white: 20000,
+                    black: 15000,
+                },
+                aluminum: 55_000,
+                steel: 90_000,
+            },
+            '3x6': {
+                solvation: 38_000,
+                aluminum: 55_000,
+                luterion: 90_000,
+            },
+        },
     },
 } as unknown as DataSource
 
 const configuratorEl = document.querySelector<HTMLElement>(
     '[data-calc-id="product-1"]',
 )!
-initConfigurator(configuratorData, configuratorEl)
+
+initConfigurator(configuratorData, configuratorEl, {
+    calcPlaceSelector: (id) => `[data-calc-place="${id}"]`,
+})

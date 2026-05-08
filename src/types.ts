@@ -11,6 +11,7 @@ export type CalculateFunction<TData = unknown> = (
 export interface SectionInput {
     label: string
     value: string
+    disabled?: boolean
 }
 
 export interface FieldOptions<TData = unknown> {
@@ -24,15 +25,19 @@ export interface FieldOptions<TData = unknown> {
     animation?: string[]
     animatedNode?: 'parent' | 'self' | 'closest'
     animatedNodeSelector?: string
+    prefix?: string
 }
 
 export interface SectionOptions {
     title?: string
     type: string
-    inputs: SectionInput[] | ((data: unknown) => SectionInput[])
+    inputs:
+        | SectionInput[]
+        | ((values: Record<string, string>) => SectionInput[])
     className?: string
     checked?: boolean
     inputType?: string
+    dependsOn?: string[]
 }
 
 export interface CalculatorOptions<TData = unknown> {
@@ -57,10 +62,12 @@ export interface ConfiguratorSection {
     key: string
     title: string
     path: string
-    postfix?: string
+    postfix?: string | ((label: string) => string)
     inputs?: SectionInput[]
     selectorDisplay?: (selected: string, sectionData: unknown) => string
     labelMapping?: Record<string, string>
+    isDisabled?: (input: SectionInput) => boolean
+    dependsOn?: string[]
 }
 
 export interface ConfiguratorField {
@@ -83,4 +90,9 @@ export interface ConfiguratorOptions {
     ) => number
     sections: ConfiguratorSection[]
     fields?: ConfiguratorField[]
+}
+
+export interface InitConfiguratorOptions {
+    calcIdAttribute?: string
+    calcPlaceSelector: ((id: string) => string) | string
 }

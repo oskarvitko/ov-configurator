@@ -37,6 +37,7 @@
                     <div class="result-row">
                         <span class="result-label">Price:</span>
                         <strong class="text-indigo-600 result-value" data-calc="price">—</strong>
+                        <span class="hidden" data-calc="price" data-calc-price-target="attr:meta-price"></span>
                         <span class="result-unit">$</span>
                     </div>
                     <div class="result-row">
@@ -81,44 +82,53 @@
                     <div data-calc-place="product-1"></div>
                 </div>
 
-                <!--
-                    Inline configurator config.
-                    Syntax is a JS object (not JSON), functions are allowed.
-                -->
-                <script type="text/plain" data-configurator-options>
-                {
-                    oldPricePercent: 20,
-                    getPrice: function(values, item) {
-                        var size     = values.size     || '3x4'
-                        var covering = values.covering || 'polycarbonate'
-                        var base         = item.basePrice || 0
-                        var sizeExtra    = (item.sizePrices     && item.sizePrices[size])         || 0
-                        var coverExtra   = (item.coveringPrices && item.coveringPrices[covering]) || 0
-                        return base + sizeExtra + coverExtra
-                    },
-                    sections: [
-                        {
-                            key:    'size',
-                            title:  'Size',
-                            path:   '$.sizes[*]',
-                            postfix: ' m'
-                        },
-                        {
-                            key:   'covering',
-                            title: 'Covering',
-                            path:  '$.coverings[*]',
-                            labelMapping: {
-                                polycarbonate: 'Polycarbonate',
-                                glass:         'Glass'
-                            }
-                        }
-                    ]
-                }
-                </script>
+                <span class="hidden" data-configurator-options='[data-configurator-options="configurator"]'></span>
             </div>
         </div>
 
     </div>
+    <!--
+        Inline configurator config.
+        Syntax is a JS object (not JSON), functions are allowed.
+    -->
+    <script type="text/plain" data-configurator-options="configurator">
+        {
+            oldPricePercent: 20,
+            getPrice: function(values, item) {
+                var result = item.nested[values.size][values.covering]
+
+                if (values.color) {
+                    result = result[values.color]
+                }
+
+                return result
+            },
+            sections: [
+                {
+                    key:    'size',
+                    title:  'Size',
+                    path:   '$.nested.*~',
+                    postfix: ' m'
+                },
+                {
+                    key:   'covering',
+                    dependsOn: ['size'],
+                    title: 'Covering',
+                    path:  "$.nested['$get:size'].*~",
+                    labelMapping: {
+                        polycarbonate: 'Polycarbonate',
+                        glass:         'Glass'
+                    }
+                },
+                {
+                    key:   'color',
+                    dependsOn: ['covering'],
+                    title: 'Color',
+                    path:  "$.nested['$get:size']['$get:covering'].*~",
+                }
+            ]
+        }
+    </script>
     <script type="module" src="./main.ts"></script>
 </body>
 

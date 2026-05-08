@@ -16,7 +16,7 @@ export default defineConfig({
             plugins: [
                 babel({
                     babelHelpers: 'bundled',
-                    extensions: ['.ts', '.js'],
+                    extensions: ['.ts', '.tsx', '.js'],
                     presets: [
                         [
                             '@babel/preset-env',
