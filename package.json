@@ -1,6 +1,6 @@
 {
   "name": "ov-configurator",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Universal frontend product configurator module",
   "type": "module",
   "main": "./dist/ov-configurator.cjs",
