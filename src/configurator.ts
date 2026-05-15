@@ -178,11 +178,14 @@ export function initConfigurator(
     const paramsField = {
         calculateFunction(values: Record<string, string>) {
             return sections
-                .map(
-                    (section: ConfiguratorSection) =>
-                        values[section.key] +
-                        getPostfix(section, values[section.key]),
-                )
+                .map((section: ConfiguratorSection) => {
+                    const value = values[section.key]
+
+                    if (value === undefined) return null
+
+                    return value + getPostfix(section, value)
+                })
+                .filter(Boolean)
                 .join(' ')
         },
     }
@@ -197,10 +200,14 @@ export function initConfigurator(
     const paramsViewField = {
         calculateFunction(values: Record<string, string>) {
             return sections
-                .map(
-                    (section: ConfiguratorSection) =>
-                        `${section.title}: ${values[section.key]}${getPostfix(section, values[section.key])}`,
-                )
+                .map((section: ConfiguratorSection) => {
+                    const value = values[section.key]
+
+                    if (value === undefined) return null
+
+                    return `${section.title}: ${value}${getPostfix(section, value)}`
+                })
+                .filter(Boolean)
                 .join('\n')
         },
     }
