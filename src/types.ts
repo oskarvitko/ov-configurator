@@ -49,6 +49,7 @@ export interface CalculatorOptions<TData = unknown> {
     stylePrefix?: string
     dataAttributePrefix?: string
     sectionsOptions?: SectionOptions[]
+    initialValues?: Record<string, string>
 }
 
 /** Minimal interface exposed to external code that receives a calculator instance */
@@ -93,6 +94,7 @@ export interface ConfiguratorOptions {
 }
 
 export interface InitConfiguratorOptions {
+    initialValues?: Record<string, string>
     calcIdAttribute?: string
     calcPlaceSelector: ((id: string) => string) | string
 }

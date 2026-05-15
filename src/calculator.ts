@@ -325,13 +325,28 @@ export default class Calculator<TData = unknown> {
         resolvedSections: ResolvedSection[]
         values: Record<string, string>
     } {
+        const { initialValues = {} } = this.options
         const sections = this.options.sectionsOptions ?? []
-        const values: Record<string, string> = {}
+        const values: Record<string, string> = { ...initialValues }
 
         for (const section of sections) {
             const inputs = resolveInputs(section, values)
-            const firstEnabled = inputs.find((i) => !i.disabled)
-            if (firstEnabled) values[section.type] = firstEnabled.value
+
+            const initialValue = values[section.type]
+            if (initialValue !== undefined) {
+                const isInitialEnabled = inputs.find(
+                    (i) => i.value === initialValue && !i.disabled,
+                )
+
+                if (isInitialEnabled) {
+                    values[section.type] = initialValue
+                }
+            } else {
+                const enabledInput = inputs.find((i) => !i.disabled)
+                if (enabledInput) {
+                    values[section.type] = enabledInput.value
+                }
+            }
         }
 
         return { resolvedSections: resolveSections(sections, values), values }

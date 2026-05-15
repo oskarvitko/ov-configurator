@@ -149,6 +149,7 @@ export function initConfigurator(
         data,
         editableFields: [],
         sectionsOptions: [],
+        initialValues: initOptions.initialValues,
     })
 
     calculator.addField({
