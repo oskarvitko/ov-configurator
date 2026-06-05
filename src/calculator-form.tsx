@@ -152,6 +152,10 @@ function Section({
                         <label
                             for={`${prefix}-${id}-${type}-${i}`}
                             dangerouslySetInnerHTML={{ __html: input.label }}
+                            data-value={input.value}
+                            style={{
+                                '--option-value': input.value,
+                            }}
                         />
                     </div>
                 ))}
