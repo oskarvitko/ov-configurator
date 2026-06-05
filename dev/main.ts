@@ -102,6 +102,7 @@ calculator.render(formPlace)
 
 const configuratorData = {
     'product-1': {
+        colors: ['white', 'green', 'black'],
         basePrice: 45_000,
         sizes: ['3x4', '3x6', '4x8'],
         coverings: ['polycarbonate', 'glass'],

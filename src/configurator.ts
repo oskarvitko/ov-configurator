@@ -262,6 +262,10 @@ export function initConfigurator(
 
                       if (!sectionData) return []
 
+                      if (typeof section.transformInputs === 'function') {
+                          return section.transformInputs(sectionData)
+                      }
+
                       return (sectionData as string[]).map((value) => {
                           const input: SectionInput = {
                               label: getLabel(value, section),

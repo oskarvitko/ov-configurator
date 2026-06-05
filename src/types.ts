@@ -63,6 +63,7 @@ export interface ConfiguratorSection {
     key: string
     title: string
     path: string
+    transformInputs?: (inputs: any) => SectionInput[]
     postfix?: string | ((label: string) => string)
     inputs?: SectionInput[]
     selectorDisplay?: (selected: string, sectionData: unknown) => string

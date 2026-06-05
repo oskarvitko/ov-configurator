@@ -106,6 +106,19 @@
             },
             sections: [
                 {
+                    key: 'colormap',
+                    title: "Colors",
+                    path: '$.colors',
+                    transformInputs: function(colors) {
+                        return colors[0].map(function(color) {
+                            return {
+                                label: color,
+                                value: color
+                            }
+                        })
+                    }
+                },
+                {
                     key:    'size',
                     title:  'Size',
                     path:   '$.nested.*~',
