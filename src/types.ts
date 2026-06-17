@@ -89,6 +89,7 @@ export interface ConfiguratorOptions {
         values: Record<string, string>,
         item: unknown,
         id: string,
+        calculator: ICalculatorInstance,
     ) => number
     sections: ConfiguratorSection[]
     fields?: ConfiguratorField[]

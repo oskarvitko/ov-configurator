@@ -155,7 +155,7 @@ export function initConfigurator(
     calculator.addField({
         selector: 'price',
         calculateFunction: (values, item) => {
-            return getPrice(values, item, id)
+            return getPrice(values, item, id, calculator)
         },
     })
 
