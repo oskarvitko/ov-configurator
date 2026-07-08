@@ -132,7 +132,7 @@ function Section({
             class={cls('section')}
             {...{ [`data-${dataAttributePrefix}-section-type`]: type }}
         >
-            {title && <h4 class={cls('section-title')}>{title}:</h4>}
+            {title && <div class={cls('section-title')}>{title}:</div>}
             <div class={cls('section-row')}>
                 {inputs.map((input, i) => (
                     <div
